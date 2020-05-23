@@ -1,0 +1,230 @@
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react-dom.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.21.1/babel.min.js"></script>
+<script type="text/babel">
+
+  function getNextPos (x, y, dir, dist, count) {
+    let endPos = [x,y]
+    if (dir === 'Up') {
+      endPos[1] = (y-(dist*count))
+    } else if (dir === 'Down') {
+      endPos[1] = (y+(dist*count))
+    } else if (dir === 'Left') {
+      endPos[0] = (x-(dist*count))
+    } else if (dir === 'Right') {
+      endPos[0] = (x+(dist*count))
+    }
+    return endPos
+  }
+
+  function randomDir () {
+    const directions = ['↖', 'Up', '↗', 'Left', 'Right', '↙', 'Down', '↘']
+    return directions[Math.floor(Math.random() * directions.length)]
+  }
+
+  function randomColor () {
+    const colors = ['goldenrod', 'darkturquoise', 'paleturquoise', 'limegreen', 'darkolivegreen', 'violet', 'darkviolet', 'palevioletred', 'indigo', 'lavender', 'fuchsia', ]
+    return colors[Math.floor(Math.random() * colors.length)]
+  }
+
+  function spawner () {
+    const x = Math.round((Math.random() * 520) + 40)
+    const y = Math.round((Math.random() * 440) + 40)
+    return [x, y]
+  }
+
+  function checkDeathReset (x, y) {
+    if (x >= 600 || x <= 0 || y >= 520 || y <= 0) {
+      return (spawner())
+    }
+  }
+
+  function calcVelocityX (vel) {
+    if (vel >= 1) {
+      return 'x += dist'
+    } else if (vel <= -1){
+      return 'x -= dist'
+    } else {
+      return 'x'
+    }
+  }
+  function calcVelocityY (vel) {
+    if (vel >= 1) {
+      return 'y += dist'
+    } else if (vel <= -1){
+      return 'y -= dist'
+    } else {
+      return 'y'
+    }
+  }
+
+  function checkForX (dir) {
+    if (dir === '↖' || dir === 'Left' || dir === '↙') {
+      return -1
+    } else if (dir === '↗' || dir === 'Right' || dir === '↘') {
+      return 1
+    } else {
+      return 0
+    }
+  }
+  function checkForY (dir) {
+    if (dir === '↖' || dir === 'Up' || dir === '↗') {
+      return -1
+    } else if (dir === '↙' || dir === 'Down' || dir === '↘') {
+      return 1
+    } else {
+      return 0
+    }
+  }
+
+  function drawDot (props) {
+    let [context, x, y, dir, dist, count, color] = props
+
+    eval(calcVelocityX(checkForX(dir)))
+    eval(calcVelocityY(checkForY(dir)))
+    let [endX, endY] = getNextPos(x, y, dir, dist, count)
+    context.beginPath()
+    context.arc(x, y, 2.5, 0, 2 * Math.PI)
+    context.fillStyle = color
+    context.fill()
+    return {
+      x: endX,
+      y: endY
+    }
+  }
+
+const Directional = (props) => {
+  let boxColor = 'darkturquoise'
+  let textSize = '1.1em'
+  let padding = '12px 0px'
+  let height = '24px'
+  if (props.directionShit) {
+    boxColor = 'fuchsia'
+    textSize = '.85em'
+    padding = '20px 0px'
+    height = '8px'
+  }
+  const style = { backgroundColor: boxColor, border: '2px solid white', height: height, width: '48px', color: 'white', fontFamily: 'palatino', fontWeight: 'bold', padding: padding}
+  return (
+    <div>
+      <div width='80' height='30' style={style} onMouseOver={props.handleTouch}>
+        <div style={{ fontSize: textSize }}>{props.direction}</div>
+      </div>
+    </div>
+  )
+}
+const Faster = (props) => {
+  let style = { backgroundColor: 'darkturquoise', border: '2px solid white', height: '30px', width: '48px', color: 'white', fontFamily: 'palatino', fontWeight: 'bold', padding: '9px 0px'}
+  return (
+    <div>
+      <div width='80' height='30' style={style} onClick={props.handleTouch}>
+        <div>GO FAST</div>
+      </div>
+    </div>
+  )
+}
+class Game extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      context: undefined,
+      dirScript: null,
+      x: 300,
+      y: 260,
+      speed: 150,
+      color: 'goldenrod',
+      score: 0,
+      timer: 45,
+      begun: false,
+      deathEffects: false
+    }
+    setInterval(() => { timer: this.state.timer -= 1 }, 1000)
+    this.interval = null
+  }
+
+  resetLoop () {
+    if (!this.state.begun) { this.setState({ begun: true, timer: 45 }) }
+    if (this.interval) {clearInterval(this.interval)}
+    this.interval = setInterval(() => {
+      const props = [this.state.context, this.state.x, this.state.y, this.state.dirScript, Math.floor(Math.random() *11 + 5), 1, this.state.color]
+      const end = drawDot(props)
+      if (this.state.timer >= 0) { this.setState({ score: this.state.score += 1 }) }
+      if (checkDeathReset(end.x, end.y)) {
+        const respawn = checkDeathReset(end.x, end.y)
+        this.setState({ x: respawn[0], y: respawn[1], dirScript: randomDir(), speed: 150, color: randomColor(), deathEffects: true })
+        setTimeout(() => { this.setState({ deathEffects: false }) }, 500)
+        this.handleTouch(randomDir())
+      } else {
+        this.setState({ x: end.x, y: end.y })
+      }
+    }, this.state.speed)
+  }
+
+handleTouch (dir) {
+  this.setState({ dirScript: dir })
+  this.resetLoop()
+}
+handleAccelerate () {
+  this.setState({ speed: this.state.speed -= 5 })
+  this.resetLoop()
+}
+
+componentDidMount() { this.setState({ context: this.refs.canvas.getContext('2d') }) }
+
+render() {
+
+  const borderFlash = (this.state.deathEffects) ? `4px solid ${randomColor()}` : '4px solid darkturquoise'
+  const backgroundColor = (this.state.deathEffects) ? 'black' : 'white'
+  const textColor = (this.state.deathEffects) ? 'white' : 'black'
+  let scoreFlash
+  if (this.state.timer >= 0) {
+    scoreFlash = 'black'
+    if (this.state.deathEffects) { scoreFlash = 'white' }
+  } else { scoreFlash = randomColor() }
+
+  const directions = ['↖', 'Up', '↗', 'Left', 'Right', '↙', 'Down', '↘']
+  const directionalArray = directions.map((dir) => {
+    let dirShit = (dir === 'Up' || dir === 'Left' || dir === 'Right' || dir === 'Down') ? true : false
+    dirShit = (this.state.deathEffects) ? !dirShit : dirShit
+    const handleTouch = () => this.handleTouch(dir)
+    return (
+      <Directional handleTouch={handleTouch.bind(this)} direction={dir} key={dir} directionShit={dirShit} />
+    )
+  })
+  const handleAccelerate = () => this.handleAccelerate()
+    return (
+      <div style={{ textAlign: 'center', backgroundColor: backgroundColor }}>
+        <h1 style={{ color: textColor, fontFamily: 'palatino', fontWeight: 'bolder', fontSize: '2em', margin: '-8px 0px 10px' }}>
+          <span style={{ color: scoreFlash }}>{this.state.score}</span>
+          <sub><small><span style={{ fontWeight: 'normal' }}>pts</span></small></sub> ∴ &nbsp;
+          {Number(((13 / this.state.speed) * 1000).toFixed(2))}
+          <sub><small><span style={{ fontWeight: 'normal' }}>px/s</span></small></sub> ∴ &nbsp;
+          <span style={{ color: scoreFlash }}>{this.state.timer}</span>
+          <sub><small><span style={{ fontWeight: 'normal' }}>s</span></small></sub>
+        </h1>
+        <canvas ref='canvas' width="600" height="520" style={{ border: borderFlash, margin: '-8px' }}></canvas><br/><br/>
+          <div style={{ display: 'flex', justifyContent: 'center' }}> {directionalArray[0]}{directionalArray[1]}{directionalArray[2]} </div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}> {directionalArray[3]} <Faster handleTouch={handleAccelerate.bind(this)} /> {directionalArray[4]} </div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}> {directionalArray[5]}{directionalArray[6]}{directionalArray[7]} </div>
+
+          <div style={{display: 'flex', flexDirection: 'row', justifyContent: 'center', color: textColor}}>
+          <div style={{width: '400px', padding: '20px', border: 'solid 4px fuchsia', textAlign: 'left', margin: '80px', fontFamily: 'palatino', fontSize: '1.25em'}}>
+            <div style={{ fontWeight: 'bolder' }}>Propositions: </div>
+            <div>Player wins if the most points are scored.</div><div>Points are scored upon the field.</div>  <div>For 45 seconds points may be scored.</div><div>Speed is the rate at which points are scored.</div><div>If a point touches a wall, player dies.</div><div>Death resets speed.</div>
+            <div style={{ fontWeight: 'bolder' }}>Assume: </div>
+            <div>It is good to win.</div><div style={{ fontWeight: 'bolder' }}>∴ It is good to go fast and it is bad to die.</div>
+          </div>
+          <div style={{ display: 'inline block', width: '400px', padding: '20px', border: 'solid 4px fuchsia', textAlign: 'left', margin: '80px', fontFamily: 'palatino', fontSize: '1.25em'}}>
+            <div style={{ fontWeight: 'bolder' }}>Inputs: </div>
+            <div>GO FAST is activated by clicking.</div>
+            <div>Directions need merely be touched.</div>
+            <div>Countdown starts at first input.</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+}
+ReactDOM.render(<Game />, document.getElementById('root'))
+</script>
